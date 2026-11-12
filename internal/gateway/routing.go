@@ -1871,6 +1871,12 @@ func modelCooledDown(why string, body []byte) bool {
 // the model cooled down (modelCooledDown), or the vendor's words name the
 // model it limited (modelNamed).
 func modelLimited(c candidate, why string, body []byte) bool {
+	// The user's word that the provider counts limits per model: a rate or
+	// quota refusal is the model's, whatever its words say. Credit is not:
+	// a balance every model draws on.
+	if c.p.PerModelLimits && (why == failRate || why == failQuota) {
+		return true
+	}
 	return modelCooledDown(why, body) || modelNamed(c, why, body)
 }
 

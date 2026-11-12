@@ -138,6 +138,10 @@ const providerUsage = `usage:
                                           off: one that fails without saying why (a relay's 5xx) doesn't
                                           rest at all, while out of quota, its key refused or rate limited
                                           still rests it
+  magpie provider per-model-limits <id> [on|off]
+                                          the vendor counts rate and quota limits per model: a 429 or a
+                                          quota refusal for one model rests that model alone, and its
+                                          siblings still answer (default: off)
   magpie provider listed <id> yes|no      no: its models serve only through routing groups, not in the list
   magpie provider off|on <id>             switch it off (kept, but no agent or request uses it), or on again
   magpie provider test <id> [--as codex|claude-code] [model…]
@@ -688,6 +692,8 @@ func providerCmd(args []string) error {
 		return quotaRestCmd(rest)
 	case "rest-cap":
 		return restCapCmd(rest)
+	case "per-model-limits":
+		return perModelLimitsCmd(rest)
 	case "listed":
 		// no: the provider's models leave the list agents see and serve
 		// only through the routing groups they are in
@@ -1382,6 +1388,18 @@ func applyPairs(p *provider.Provider, pairs []string) error {
 				p.NoStandIn = true
 			default:
 				return fmt.Errorf("fallback-for-others=yes|no, not %q", v)
+			}
+		case "per-model-limits":
+			// yes: the vendor counts rate and quota limits per model, so a
+			// 429 or quota refusal for one model rests that model alone
+			// (provider.PerModelLimits)
+			switch strings.ToLower(v) {
+			case "yes", "on":
+				p.PerModelLimits = true
+			case "no", "off", "default":
+				p.PerModelLimits = false
+			default:
+				return fmt.Errorf("per-model-limits=yes|no, not %q", v)
 			}
 		case "free":
 			// yes: every model of it counts as free for Free first and
@@ -2234,6 +2252,41 @@ func restCapCmd(rest []string) error {
 		fmt.Printf("%s · a key or account that keeps failing sits out at most %s\n", p.Name, restWords(time.Duration(p.RestCap)*time.Minute))
 	} else {
 		fmt.Printf("%s · a key or account that keeps failing sits out at most 10 minutes, 30 when rate limited (magpie's own)\n", p.Name)
+	}
+	return nil
+}
+
+// perModelLimitsCmd sets or shows whether a provider's rate and quota
+// limits are its models' own, so one model's 429 or quota refusal rests
+// that model alone and its siblings still answer.
+func perModelLimitsCmd(rest []string) error {
+	if len(rest) < 1 || len(rest) > 2 {
+		return fmt.Errorf("magpie provider per-model-limits <id> [on|off]")
+	}
+	p, err := provider.Find(rest[0])
+	if err != nil {
+		return err
+	}
+	if len(rest) == 2 {
+		switch strings.ToLower(strings.TrimSpace(rest[1])) {
+		case "on", "yes":
+			p.PerModelLimits = true
+		case "off", "no", "default":
+			p.PerModelLimits = false
+		default:
+			return fmt.Errorf("magpie provider per-model-limits <id> [on|off], not %q", rest[1])
+		}
+		if err := provider.Save(*p); err != nil {
+			return err
+		}
+		if p, err = provider.Find(p.ID); err != nil {
+			return err
+		}
+	}
+	if p.PerModelLimits {
+		fmt.Printf("%s · rate and quota limits are per model: one model's refusal rests that model alone\n", p.Name)
+	} else {
+		fmt.Printf("%s · a rate or quota refusal that names no model rests the key or account whole\n", p.Name)
 	}
 	return nil
 }

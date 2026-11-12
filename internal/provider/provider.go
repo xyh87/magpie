@@ -268,6 +268,12 @@ type Provider struct {
 	// upstreams, and a rest of half an hour held every request back until
 	// magpie restarted). Off by default: such a refusal rests it as ever.
 	LimitRestOff bool `json:"limitRestOff,omitempty"`
+	// PerModelLimits says the vendor counts its rate and quota limits per
+	// model, so a 429 or a quota refusal for one model is that model's
+	// alone and its siblings still answer. Off: one whose words name no
+	// model rests the key or account whole. A credit refusal still rests it
+	// whole, as a balance every model draws on.
+	PerModelLimits bool `json:"perModelLimits,omitempty"`
 
 	// PriceRate is what the provider charges against the official price
 	// (ITea312, #819): a relay that bills 0.8× or 1.5× of it. It scales the

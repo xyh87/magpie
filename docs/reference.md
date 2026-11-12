@@ -2320,7 +2320,12 @@ pool whose unknown errors come now and then: a key or account of it that
 fails without saying why (a 5xx, a dropped connection) doesn't rest at all,
 and the next request asks it again. A refused key (401, 403), a model it
 doesn't serve, being out of quota or credit, or a rate limit still rests
-it as above.
+it as above. A vendor that counts its rate or quota limits per model is
+set once with `magpie provider per-model-limits <id> on` (or
+`magpie provider set <id> per-model-limits=yes`), or in the provider
+editor's Advanced fold, *Limits are per model*: a 429 or quota refusal for
+one model then rests that model alone, and its siblings still answer. A
+credit refusal still rests the key or account whole.
 
 **When the safety filter refuses.** A reply the vendor's safety filter
 refuses before any of it is said rests nobody: it is about what was asked,
